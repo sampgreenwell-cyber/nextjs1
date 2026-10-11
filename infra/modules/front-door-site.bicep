@@ -36,6 +36,10 @@ param wafPolicyName string = ''
 param tags object = {}
 
 var useCustomDomain = !empty(customDomainHostName)
+// Names stay valid when a mode is off: Azure validates the names and dependencies of skipped
+// (condition false) resources too, and an empty segment fails the whole deployment.
+var customDomainName = useCustomDomain ? replace(customDomainHostName, '.', '-') : '${name}-unused-domain'
+var sharedEndpointName = useCustomDomain ? endpointName : '${name}-unused-endpoint'
 
 resource profile 'Microsoft.Cdn/profiles@2025-06-01' existing = {
   name: profileName
@@ -43,7 +47,7 @@ resource profile 'Microsoft.Cdn/profiles@2025-06-01' existing = {
 
 resource sharedEndpoint 'Microsoft.Cdn/profiles/afdEndpoints@2025-06-01' existing = if (useCustomDomain) {
   parent: profile
-  name: endpointName
+  name: sharedEndpointName
 }
 
 resource ownEndpoint 'Microsoft.Cdn/profiles/afdEndpoints@2025-06-01' = if (!useCustomDomain) {
@@ -58,7 +62,7 @@ resource ownEndpoint 'Microsoft.Cdn/profiles/afdEndpoints@2025-06-01' = if (!use
 
 resource customDomain 'Microsoft.Cdn/profiles/customDomains@2025-06-01' = if (useCustomDomain) {
   parent: profile
-  name: replace(customDomainHostName, '.', '-')
+  name: customDomainName
   properties: {
     hostName: customDomainHostName
     tlsSettings: {
@@ -158,7 +162,7 @@ resource domainRoute 'Microsoft.Cdn/profiles/afdEndpoints/routes@2025-06-01' = i
 }
 
 resource wafPolicy 'Microsoft.Network/FrontDoorWebApplicationFirewallPolicies@2022-05-01' existing = if (!empty(wafPolicyName)) {
-  name: wafPolicyName
+  name: empty(wafPolicyName) ? '${replace(name, '-', '')}unusedwaf' : wafPolicyName
 }
 
 // The site's own security policy pointing at the shared WAF policy: a domain belongs to one security
