@@ -10,7 +10,9 @@ Next.js 16 UI (hybrid rendering, `output: "standalone"`) on Azure Static Web App
 | Resource group | `rg-platform-services` | `rg-platform-services` |
 | Deploys from | push to `dev` | push to `qa` (pull request from `dev`), after approval |
 
-The URL is the Static Web App's default hostname, shown in each pipeline run's summary. A custom domain through Front Door is a platform-team request.
+Users reach it through the shared Front Door and its WAF; the URL is in each pipeline run's summary. It starts on its own `azurefd.net` address. The Static Web App only accepts Front Door's traffic: the pipeline locks it (`staticwebapp.config.json`) and checks that the direct `azurestaticapps.net` address is refused.
+
+**Custom domain:** set `customDomainHostName` in `infra/<env>.bicepparam`. The next run prints a TXT and a CNAME record in its summary; once DNS has them, Front Door issues the certificate and the following run verifies the site on that domain.
 
 ## How it calls the BFF
 ```
@@ -53,7 +55,7 @@ az deployment group what-if -g rg-platform-services -f infra/main.bicep -p infra
 
 ## Platform contract
 The shared pipeline relies on these; keep them in place:
-- `package.json` + `package-lock.json` with a `build` script (and `test`, which the pipeline runs if present).
+- `package.json` + `package-lock.json` with a `build` script (and `test`, which the pipeline runs if present), and `engines.node` pinned to `22.x` (Static Web Apps runs only Node 18, 20 or 22 for server-rendered apps; an open range builds with a newer Node and the upload fails).
 - `GET /api/health` returning `{"version": NEXT_PUBLIC_APP_VERSION}`, and the `/api/bff/*` proxy.
 - `.env.dev` and `.env.qa`; `infra/main.bicep` plus `infra/dev.bicepparam` and `infra/qa.bicepparam`.
 - `infra/modules/` is copied from `sampgreenwell-cyber/platform-bicep-modules`; update it from there.
