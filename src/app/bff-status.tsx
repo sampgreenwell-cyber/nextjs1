@@ -19,7 +19,7 @@ export function BffStatus() {
   return (
     <section>
       <button type="button" onClick={check}>
-        Check the BFF (springboot1)
+        Check the BFF (store-bff)
       </button>
       {result && <pre>{result}</pre>}
     </section>

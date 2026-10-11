@@ -2,7 +2,7 @@
 
 A Next.js UI on CLX Static Web Apps
 
-Next.js 16 UI (hybrid rendering, `output: "standalone"`) on Azure Static Web Apps, calling the `springboot1` BFF through APIM. Created from the `nextjs-web-app` Backstage template; owned by `group:default/guests`.
+Next.js 16 UI (hybrid rendering, `output: "standalone"`) on Azure Static Web Apps, calling the `store-bff` BFF through APIM. Created from the `nextjs-web-app` Backstage template; owned by `group:default/guests`.
 
 | | dev | qa |
 |---|---|---|
@@ -14,7 +14,7 @@ The URL is the Static Web App's default hostname, shown in each pipeline run's s
 
 ## How it calls the BFF
 ```
-browser ──► this app ──/api/bff/<path>──► Next.js server ──+ subscription key──► APIM /springboot1/<path> ──► BFF
+browser ──► this app ──/api/bff/<path>──► Next.js server ──+ subscription key──► APIM /store-bff/<path> ──► BFF
 ```
 - Pages call `/api/bff/...` on this app, never the BFF directly (see `src/app/bff-status.tsx`). The server-side proxy (`src/lib/bff.ts`) adds the APIM subscription key, so the key never reaches the browser and the BFF needs no CORS rules.
 - `infra/` creates an APIM subscription for this UI in each environment, scoped to the BFF's API only, and passes its key to the server as the app setting `BFF_SUBSCRIPTION_KEY`. The key is never in git, the pipeline or a parameter file. To rotate it, regenerate the key on the subscription (`swa-lab-nextjs1-d01`) in APIM and rerun the pipeline.
@@ -23,7 +23,7 @@ browser ──► this app ──/api/bff/<path>──► Next.js server ──+
 ## Run locally
 Create `.env.local` (git-ignored) with the BFF URL and a key from your own APIM subscription:
 ```
-BFF_BASE_URL=https://apim-samgp-lab.azure-api.net/springboot1
+BFF_BASE_URL=https://apim-samgp-lab.azure-api.net/store-bff
 BFF_SUBSCRIPTION_KEY=<your key>
 ```
 ```bash
