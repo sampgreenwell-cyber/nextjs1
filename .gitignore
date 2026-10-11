@@ -1,0 +1,11 @@
+node_modules/
+.next/
+out/
+coverage/
+next-env.d.ts
+*.tsbuildinfo
+# Written by the pipeline at deploy time from .env.<env> and staticwebapp.config.<env>.json
+.env.production
+staticwebapp.config.json
+# Local settings (BFF_BASE_URL, BFF_SUBSCRIPTION_KEY for npm run dev)
+.env*.local
