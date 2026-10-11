@@ -17,4 +17,4 @@ spec:
   lifecycle: experimental
   owner: group:default/guests
   dependsOn:
-    - component:default/springboot1
+    - component:default/store-bff
