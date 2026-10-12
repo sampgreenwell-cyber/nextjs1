@@ -12,6 +12,8 @@ Next.js 16 UI (hybrid rendering, `output: "standalone"`) on Azure Static Web App
 
 Users reach it through the shared Front Door and its WAF; the URL is in each pipeline run's summary. It starts on its own `azurefd.net` address. The Static Web App only accepts Front Door's traffic: the pipeline locks it (`staticwebapp.config.json`) and checks that the direct `azurestaticapps.net` address is refused.
 
+**WAF (once per environment):** the first run fails with "not covered by the WAF" and prints the domain ID. Ask the platform team to add it to the central Front Door security policy; re-run when they confirm. Moving to a custom domain changes the ID, so ask again then.
+
 **Custom domain:** set `customDomainHostName` in `infra/<env>.bicepparam`. The next run prints a TXT and a CNAME record in its summary; once DNS has them, Front Door issues the certificate and the following run verifies the site on that domain.
 
 ## How it calls the BFF

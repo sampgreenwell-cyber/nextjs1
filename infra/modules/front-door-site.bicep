@@ -1,7 +1,11 @@
 // Reusable module: one site's slice of an existing Azure Front Door profile. Creates only objects owned
-// by this site (endpoint or custom domain, origin group, origin, route, WAF association), never edits
-// shared ones, so service repos can't overwrite each other or the central Front Door config. Based on
-// the UI pieces of Approach1/FrontDoor/main.bicep in the CLX repo.
+// by this site (endpoint or custom domain, origin group, origin, route), never edits shared ones, so
+// service repos can't overwrite each other or the central Front Door config. Based on the UI pieces of
+// Approach1/FrontDoor/main.bicep in the CLX repo.
+//
+// WAF: Front Door lets a WAF policy sit in only one security policy per profile, and the central
+// Front Door config owns that one. So the site doesn't attach itself: the platform team adds the
+// wafDomainId output to the central security policy's domain list, and the pipeline fails until it's there.
 //
 // Two modes:
 //   customDomainHostName empty -> the site gets its own endpoint (<name>-<hash>.z01.azurefd.net).
@@ -28,9 +32,6 @@ param customDomainHostName string = ''
 
 @description('Existing shared endpoint to attach the custom domain to. Required with customDomainHostName.')
 param endpointName string = ''
-
-@description('Existing WAF policy (Microsoft.Network/FrontDoorWebApplicationFirewallPolicies) in this resource group. Empty = no WAF.')
-param wafPolicyName string = ''
 
 @description('Tags for the endpoint')
 param tags object = {}
@@ -161,37 +162,6 @@ resource domainRoute 'Microsoft.Cdn/profiles/afdEndpoints/routes@2025-06-01' = i
   }
 }
 
-resource wafPolicy 'Microsoft.Network/FrontDoorWebApplicationFirewallPolicies@2022-05-01' existing = if (!empty(wafPolicyName)) {
-  name: empty(wafPolicyName) ? '${replace(name, '-', '')}unusedwaf' : wafPolicyName
-}
-
-// The site's own security policy pointing at the shared WAF policy: a domain belongs to one security
-// policy, so adding this site to the central one would mean editing a shared object.
-resource securityPolicy 'Microsoft.Cdn/profiles/securityPolicies@2025-06-01' = if (!empty(wafPolicyName)) {
-  parent: profile
-  name: '${name}-waf'
-  properties: {
-    parameters: {
-      type: 'WebApplicationFirewall'
-      wafPolicy: {
-        id: wafPolicy.id
-      }
-      associations: [
-        {
-          domains: [
-            {
-              id: useCustomDomain ? customDomain.id : ownEndpoint.id
-            }
-          ]
-          patternsToMatch: [
-            '/*'
-          ]
-        }
-      ]
-    }
-  }
-}
-
 @description('Public host name: the custom domain, or the site\'s own azurefd.net host name')
 output hostName string = useCustomDomain ? customDomainHostName : ownEndpoint!.properties.hostName
 
@@ -201,3 +171,6 @@ output frontDoorId string = profile.properties.frontDoorId
 @description('With a custom domain: the CNAME target (the shared endpoint) and the TXT validation token for _dnsauth.<domain>')
 output dnsCnameTarget string = useCustomDomain ? sharedEndpoint!.properties.hostName : ''
 output dnsValidationToken string = useCustomDomain ? customDomain!.properties.validationProperties.validationToken : ''
+
+@description('The domain the platform adds to the central security policy (WAF): the custom domain, or the site\'s own endpoint')
+output wafDomainId string = useCustomDomain ? customDomain.id : ownEndpoint.id
