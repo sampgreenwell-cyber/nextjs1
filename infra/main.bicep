@@ -46,11 +46,8 @@ param appSettings object = {}
 @description('Existing Front Door profile to publish through. Empty = no Front Door (the site is public on its azurestaticapps.net name).')
 param frontDoorProfileName string = ''
 
-@description('Resource group of the Front Door profile and its WAF policy')
+@description('Resource group of the Front Door profile')
 param frontDoorResourceGroup string = resourceGroup().name
-
-@description('Existing WAF policy in that resource group. Empty = no WAF.')
-param frontDoorWafPolicyName string = ''
 
 @description('Custom domain for this site (DNS records are printed by the pipeline). Empty = its own azurefd.net host name.')
 param customDomainHostName string = ''
@@ -102,8 +99,10 @@ module site 'modules/static-web-app.bicep' = {
   }
 }
 
-// The site's slice of the shared Front Door: its own endpoint (or custom domain), origin, route and WAF
-// link. The pipeline then locks the Static Web App to this Front Door (staticwebapp.config.json).
+// The site's slice of the shared Front Door: its own endpoint (or custom domain), origin and route. The
+// pipeline then locks the Static Web App to this Front Door (staticwebapp.config.json). The WAF comes from
+// the central security policy: the platform team adds wafDomainId to it once, and until then the
+// pipeline fails.
 module frontDoor 'modules/front-door-site.bicep' = if (!empty(frontDoorProfileName)) {
   name: '${appName}-frontdoor'
   scope: resourceGroup(frontDoorResourceGroup)
@@ -114,7 +113,6 @@ module frontDoor 'modules/front-door-site.bicep' = if (!empty(frontDoorProfileNa
     probePath: '/api/health'
     customDomainHostName: customDomainHostName
     endpointName: frontDoorEndpointName
-    wafPolicyName: frontDoorWafPolicyName
     tags: tags
   }
 }
@@ -127,3 +125,5 @@ output publicHostname string = empty(frontDoorProfileName) ? site.outputs.defaul
 output frontDoorId string = empty(frontDoorProfileName) ? '' : frontDoor!.outputs.frontDoorId
 output dnsCnameTarget string = empty(frontDoorProfileName) ? '' : frontDoor!.outputs.dnsCnameTarget
 output dnsValidationToken string = empty(frontDoorProfileName) ? '' : frontDoor!.outputs.dnsValidationToken
+@description('Domain the platform team adds to the central Front Door security policy (WAF). Empty = not behind Front Door.')
+output wafDomainId string = empty(frontDoorProfileName) ? '' : frontDoor!.outputs.wafDomainId

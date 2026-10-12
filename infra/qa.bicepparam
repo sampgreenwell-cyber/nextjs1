@@ -13,9 +13,9 @@ param bffBaseUrl = ''
 param appSettings = {}
 // Behind the shared Front Door (WAF, one public address). Without a custom domain the site gets its own
 // azurefd.net host name; set customDomainHostName (e.g. 'orders.qa.example.com') and add the
-// DNS records the pipeline prints to move it onto the company domain.
+// DNS records the pipeline prints to move it onto the company domain. The WAF is the central security
+// policy's: the first run fails until the platform team adds the domain it prints to that policy.
 param frontDoorProfileName = 'afd-samgp-lab'
-param frontDoorWafPolicyName = 'wafsamgplab'
 param frontDoorEndpointName = 'afd-samgp-lab-shared'
 param customDomainHostName = ''
 param tags = {
