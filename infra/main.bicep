@@ -43,6 +43,21 @@ param bffBaseUrl string = ''
 @description('Extra non-secret app settings for the Next.js server')
 param appSettings object = {}
 
+@description('Existing Front Door profile to publish through. Empty = no Front Door (the site is public on its azurestaticapps.net name).')
+param frontDoorProfileName string = ''
+
+@description('Resource group of the Front Door profile and its WAF policy')
+param frontDoorResourceGroup string = resourceGroup().name
+
+@description('Existing WAF policy in that resource group. Empty = no WAF.')
+param frontDoorWafPolicyName string = ''
+
+@description('Custom domain for this site (DNS records are printed by the pipeline). Empty = its own azurefd.net host name.')
+param customDomainHostName string = ''
+
+@description('Existing shared Front Door endpoint that custom domains attach to')
+param frontDoorEndpointName string = ''
+
 @description('Tags for resources')
 param tags object
 
@@ -87,5 +102,28 @@ module site 'modules/static-web-app.bicep' = {
   }
 }
 
+// The site's slice of the shared Front Door: its own endpoint (or custom domain), origin, route and WAF
+// link. The pipeline then locks the Static Web App to this Front Door (staticwebapp.config.json).
+module frontDoor 'modules/front-door-site.bicep' = if (!empty(frontDoorProfileName)) {
+  name: '${appName}-frontdoor'
+  scope: resourceGroup(frontDoorResourceGroup)
+  params: {
+    profileName: frontDoorProfileName
+    name: siteName
+    originHostName: site.outputs.defaultHostname
+    probePath: '/api/health'
+    customDomainHostName: customDomainHostName
+    endpointName: frontDoorEndpointName
+    wafPolicyName: frontDoorWafPolicyName
+    tags: tags
+  }
+}
+
 output staticWebAppName string = site.outputs.name
 output defaultHostname string = site.outputs.defaultHostname
+@description('Where users reach the site: the Front Door host name, or the Static Web App\'s own')
+output publicHostname string = empty(frontDoorProfileName) ? site.outputs.defaultHostname : frontDoor!.outputs.hostName
+@description('Front Door ID the Static Web App must require (X-Azure-FDID). Empty = not behind Front Door.')
+output frontDoorId string = empty(frontDoorProfileName) ? '' : frontDoor!.outputs.frontDoorId
+output dnsCnameTarget string = empty(frontDoorProfileName) ? '' : frontDoor!.outputs.dnsCnameTarget
+output dnsValidationToken string = empty(frontDoorProfileName) ? '' : frontDoor!.outputs.dnsValidationToken
